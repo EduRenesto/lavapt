@@ -126,6 +126,17 @@ void listen_commands()
                 send(clientSocket, pProperties, sizeof(VkExtensionProperties) * *pPropertyCount, 0);
             }
         }
+        else if(strcmp(funcName, "vkEnumerateInstanceVersion") == 0)
+        {
+            uint32_t apiVersion;
+            apiVersion = VK_MAKE_VERSION(1, 0, 0);
+
+            send(clientSocket, &apiVersion, sizeof(uint32_t), 0);
+        }
+        else if(strcmp(funcName, "vkCreateInstance") == 0)
+        {
+            // TODO implement this
+        }
     }
 }
 

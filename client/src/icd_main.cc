@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <iostream>
+#include <string>
 
 #include <vulkan/vulkan.h>
 
@@ -15,6 +16,14 @@ static int m_Socket;
 
 void init() 
 {
+    const char *fd = getenv("LAVAPT_FD");
+
+    if(fd != nullptr) 
+    {
+        m_Socket = atoi(fd);
+        return;
+    }
+
     const char* server_ip = getenv("LAVAPT_ADDRESS");
     const char* server_port = getenv("LAVAPT_PORT");
 
@@ -38,9 +47,8 @@ void init()
     char handshake[strlen("tranquilao truta") + 1];
     read(m_Socket, handshake, strlen("tranquilao truta") + 1);
 
-    std::cout << handshake << std::endl;
-
     *m_Initialized = true;
+    setenv("LAVAPT_FD", std::to_string(m_Socket).c_str(), 0);
 }
 
 VkResult lavapt_vkCreateInstance(
@@ -51,7 +59,7 @@ VkResult lavapt_vkCreateInstance(
     char *payload = (char*) malloc(sizeof(VkInstanceCreateInfo));
     memcpy(payload, pInfo, sizeof(VkInstanceCreateInfo));
 
-    size_t func_len = strlen("vkCreateInstance");
+    size_t func_len = strlen("vkCreateInstance") + 1;
     send(m_Socket, reinterpret_cast<char*>(&func_len), sizeof(size_t), 0);
     send(m_Socket, "vkCreateInstance", func_len, 0);
     
@@ -141,6 +149,18 @@ VkResult lavapt_vkEnumerateInstanceExtensionProperties(
     return VK_SUCCESS;
 }
 
+VkResult lavapt_vkEnumerateInstanceVersion(
+        uint32_t *pApiVersion)
+{
+    size_t func_len = strlen("vkEnumerateInstanceVersion") + 1;
+    send(m_Socket, reinterpret_cast<char*>(&func_len), sizeof(size_t), 0);
+    send(m_Socket, "vkEnumerateInstanceVersion", func_len, 0);
+
+    read(m_Socket, pApiVersion, sizeof(uint32_t));
+
+    return VK_SUCCESS;
+}
+
 VkResult lavapt_unimplemented() 
 {
     return VK_ERROR_FEATURE_NOT_PRESENT;
@@ -162,6 +182,9 @@ extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
     } else if(strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) 
     {
         return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkEnumerateInstanceExtensionProperties);
+    } else if(strcmp(pName, "vkEnumerateInstanceVersion") == 0)
+    {
+        return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkEnumerateInstanceVersion);
     }
     else 
     {
