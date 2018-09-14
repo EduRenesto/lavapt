@@ -10,7 +10,7 @@
 
 #include <vulkan/vulkan.h>
 
-static bool m_Initialized;
+static bool *m_Initialized = new bool(false);
 static int m_Socket;
 
 void init() 
@@ -34,6 +34,13 @@ void init()
     {
         std::cerr << "failed to connect to " << server_ip << ":" << server_port << std::endl;
     }
+
+    char handshake[strlen("tranquilao truta") + 1];
+    read(m_Socket, handshake, strlen("tranquilao truta") + 1);
+
+    std::cout << handshake << std::endl;
+
+    *m_Initialized = true;
 }
 
 VkResult lavapt_vkCreateInstance(
@@ -71,6 +78,69 @@ VkResult lavapt_vkCreateInstance(
     return return_value;
 }
 
+VkResult lavapt_vkEnumerateInstanceExtensionProperties(
+        const char *pLayerName,
+        uint32_t *pPropertyCount,
+        VkExtensionProperties *pProperties) 
+{
+    size_t func_len = strlen("vkEnumerateInstanceExtensionProperties") + 1;
+    send(m_Socket, reinterpret_cast<char*>(&func_len), sizeof(size_t), 0);
+    send(m_Socket, "vkEnumerateInstanceExtensionProperties", func_len, 0);
+
+    unsigned char flags = 0x0;
+
+    unsigned char use_pLayerName = 0x1;
+    unsigned char use_pPropertyCount = 0x2;
+    unsigned char use_pProperties = 0x4;
+
+    if(pLayerName != nullptr) 
+    {
+        flags |= use_pLayerName;
+    }
+    if(*pPropertyCount != 0) 
+    {
+        flags |= use_pPropertyCount;
+    }
+    if(pProperties != nullptr)
+    {
+        flags |= use_pProperties;
+    }
+
+    std::cout << "flags " << (int) flags << std::endl;
+
+    size_t flags_len = sizeof(unsigned char);
+    send(m_Socket, reinterpret_cast<char*>(&flags), flags_len, 0);
+
+    if((flags & use_pLayerName) != 0) 
+    {
+        size_t pLayerName_len = strlen(pLayerName) + 1;
+        send(m_Socket, reinterpret_cast<char*>(&pLayerName_len), sizeof(size_t), 0);
+        send(m_Socket, pLayerName, pLayerName_len, 0);
+    }
+
+    if((flags & use_pPropertyCount) != 0) 
+    {
+        send(m_Socket, pPropertyCount, sizeof(uint32_t), 0);
+    }
+
+    char ret_pPropertyCount[sizeof(uint32_t)] = {0};
+    read(m_Socket, ret_pPropertyCount, sizeof(uint32_t));
+
+    *pPropertyCount = *reinterpret_cast<size_t*>(ret_pPropertyCount);
+
+    std::cout << *pPropertyCount << std::endl;
+
+    if((flags & use_pProperties) != 0) 
+    {
+        char ret_pProperties[sizeof(VkExtensionProperties) * *pPropertyCount] = {0};
+        read(m_Socket, ret_pProperties, sizeof(VkExtensionProperties) * *pPropertyCount);
+
+        memcpy(ret_pProperties, pProperties, sizeof(VkExtensionProperties) * *pPropertyCount);
+    }
+
+    return VK_SUCCESS;
+}
+
 VkResult lavapt_unimplemented() 
 {
     return VK_ERROR_FEATURE_NOT_PRESENT;
@@ -80,15 +150,20 @@ extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
             VkInstance pInstance,
             const char* pName)
 {
-    if(!m_Initialized) 
+    if(!*m_Initialized) 
     {
         init();
+        *m_Initialized = true;
     }
 
     if(strcmp(pName, "vkCreateInstance") == 0) 
     {
         return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkCreateInstance);
-    } else 
+    } else if(strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) 
+    {
+        return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkEnumerateInstanceExtensionProperties);
+    }
+    else 
     {
         std::cout << pName << std::endl;
         return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_unimplemented);
