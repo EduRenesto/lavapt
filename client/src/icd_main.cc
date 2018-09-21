@@ -56,33 +56,52 @@ VkResult lavapt_vkCreateInstance(
         const VkAllocationCallbacks *pAllocator,
         VkInstance *pInstance)
 {
-    char *payload = (char*) malloc(sizeof(VkInstanceCreateInfo));
-    memcpy(payload, pInfo, sizeof(VkInstanceCreateInfo));
-
     size_t func_len = strlen("vkCreateInstance") + 1;
-    send(m_Socket, reinterpret_cast<char*>(&func_len), sizeof(size_t), 0);
+    send(m_Socket, &func_len, sizeof(size_t), 0);
     send(m_Socket, "vkCreateInstance", func_len, 0);
-    
-    size_t payload_len = sizeof(VkInstanceCreateInfo);
-    send(m_Socket, reinterpret_cast<char*>(&payload_len), sizeof(size_t), 0);
-    send(m_Socket, payload, payload_len, 0);
 
-    char ret_len[sizeof(size_t)] = {0};
-    read(m_Socket, ret_len, sizeof(size_t));
+    // send the vkInstanceCreateInfo  struct
+    send(m_Socket, &pInfo->flags, sizeof(VkInstanceCreateFlags), 0);
 
-    char ret[*reinterpret_cast<size_t*>(ret_len)] = {0};
-    read(m_Socket, ret, *reinterpret_cast<size_t*>(ret_len));
+    // send the vkApplicationCreateInfo struct
+    // pApplicationName
+    size_t pApplicationName_len = strlen(pInfo->pApplicationInfo->pApplicationName) + 1;
+    send(m_Socket, &pApplicationName_len, sizeof(size_t), 0);
+    send(m_Socket, pInfo->pApplicationInfo->pApplicationName, pApplicationName_len, 0);
+    // applicationVersion
+    send(m_Socket, &pInfo->pApplicationInfo->applicationVersion, sizeof(uint32_t), 0);
+    // pEngineName
+    size_t pEngineName_len = strlen(pInfo->pApplicationInfo->pEngineName) + 1;
+    send(m_Socket, &pEngineName_len, sizeof(size_t), 0);
+    send(m_Socket, pInfo->pApplicationInfo->pEngineName, pEngineName_len, 0);
+    // applicationVersion
+    send(m_Socket, &pInfo->pApplicationInfo->applicationVersion, sizeof(uint32_t), 0);
+    // apiVersion
+    send(m_Socket, &pInfo->pApplicationInfo->apiVersion, sizeof(uint32_t), 0);
+    // end vkApplicationCreateInfo
 
-    char result_len[sizeof(size_t)] = {0};
-    read(m_Socket, result_len, sizeof(size_t));
-    
-    char result[*reinterpret_cast<size_t*>(result_len)] = {0};
-    read(m_Socket, result, *reinterpret_cast<size_t*>(result_len));
+    // enabledLayerCount
+    send(m_Socket, &pInfo->enabledLayerCount, sizeof(uint32_t), 0);
+    // ppEnabledLayerNames
+    size_t enabled_layer_names_len = 0;
+    std::cout << "layers " << pInfo->enabledLayerCount << std::endl;
+    for(auto i = 0; i < pInfo->enabledLayerCount; i++) 
+    {
+        enabled_layer_names_len += strlen(pInfo->ppEnabledLayerNames[i]) + 1;
+    }
+    send(m_Socket, &enabled_layer_names_len, sizeof(size_t), 0);
+    send(m_Socket, pInfo->ppEnabledLayerNames, enabled_layer_names_len, 0);
+    // ppEnabledExtensionNames
+    size_t enabled_extension_names_len = 0;
+    std::cout << "extensions " << pInfo->enabledExtensionCount << std::endl;
+    for(auto i = 0; i < pInfo->enabledExtensionCount; i++) 
+    {
+        enabled_extension_names_len += strlen(pInfo->ppEnabledExtensionNames[i]) + 1;
+    }
+    send(m_Socket, &enabled_extension_names_len, sizeof(size_t), 0);
+    send(m_Socket, pInfo->ppEnabledExtensionNames, enabled_extension_names_len, 0);
 
-    VkResult return_value = *reinterpret_cast<VkResult*>(result);
-
-    memcpy(pInstance, ret, sizeof(VkInstance));
-
+    auto return_value = VK_SUCCESS;
     return return_value;
 }
 
