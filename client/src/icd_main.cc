@@ -74,8 +74,8 @@ VkResult lavapt_vkCreateInstance(
     size_t pEngineName_len = strlen(pInfo->pApplicationInfo->pEngineName) + 1;
     send(m_Socket, &pEngineName_len, sizeof(size_t), 0);
     send(m_Socket, pInfo->pApplicationInfo->pEngineName, pEngineName_len, 0);
-    // applicationVersion
-    send(m_Socket, &pInfo->pApplicationInfo->applicationVersion, sizeof(uint32_t), 0);
+    // engineVersion
+    send(m_Socket, &pInfo->pApplicationInfo->engineVersion, sizeof(uint32_t), 0);
     // apiVersion
     send(m_Socket, &pInfo->pApplicationInfo->apiVersion, sizeof(uint32_t), 0);
     // end vkApplicationCreateInfo
@@ -84,13 +84,15 @@ VkResult lavapt_vkCreateInstance(
     send(m_Socket, &pInfo->enabledLayerCount, sizeof(uint32_t), 0);
     // ppEnabledLayerNames
     size_t enabled_layer_names_len = 0;
-    std::cout << "layers " << pInfo->enabledLayerCount << std::endl;
     for(auto i = 0; i < pInfo->enabledLayerCount; i++) 
     {
         enabled_layer_names_len += strlen(pInfo->ppEnabledLayerNames[i]) + 1;
     }
     send(m_Socket, &enabled_layer_names_len, sizeof(size_t), 0);
     send(m_Socket, pInfo->ppEnabledLayerNames, enabled_layer_names_len, 0);
+    
+    // enabledExtensionCount
+    send(m_Socket, &pInfo->enabledExtensionCount, sizeof(uint32_t), 0);
     // ppEnabledExtensionNames
     size_t enabled_extension_names_len = 0;
     std::cout << "extensions " << pInfo->enabledExtensionCount << std::endl;
@@ -101,7 +103,10 @@ VkResult lavapt_vkCreateInstance(
     send(m_Socket, &enabled_extension_names_len, sizeof(size_t), 0);
     send(m_Socket, pInfo->ppEnabledExtensionNames, enabled_extension_names_len, 0);
 
-    auto return_value = VK_SUCCESS;
+    VkResult return_value;
+    read(m_Socket, pInstance, sizeof(VkInstance));
+    read(m_Socket, &return_value, sizeof(VkResult));
+
     return return_value;
 }
 
@@ -133,8 +138,6 @@ VkResult lavapt_vkEnumerateInstanceExtensionProperties(
         flags |= use_pProperties;
     }
 
-    std::cout << "flags " << (int) flags << std::endl;
-
     size_t flags_len = sizeof(unsigned char);
     send(m_Socket, reinterpret_cast<char*>(&flags), flags_len, 0);
 
@@ -154,8 +157,6 @@ VkResult lavapt_vkEnumerateInstanceExtensionProperties(
     read(m_Socket, ret_pPropertyCount, sizeof(uint32_t));
 
     *pPropertyCount = *reinterpret_cast<size_t*>(ret_pPropertyCount);
-
-    std::cout << *pPropertyCount << std::endl;
 
     if((flags & use_pProperties) != 0) 
     {

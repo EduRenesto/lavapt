@@ -135,7 +135,85 @@ void listen_commands()
         }
         else if(strcmp(funcName, "vkCreateInstance") == 0)
         {
-            // TODO implement this
+            VkInstanceCreateFlags flags;
+            read(clientSocket, &flags, sizeof(VkInstanceCreateFlags));
+
+            // pApplicationName
+            size_t pApplicationName_len;
+            read(clientSocket, &pApplicationName_len, sizeof(size_t));
+            char *pApplicationName = (char*) malloc(pApplicationName_len);
+            read(clientSocket, pApplicationName, pApplicationName_len);
+
+            // applicationVersion
+            uint32_t applicationVersion;
+            read(clientSocket, &applicationVersion, sizeof(uint32_t));
+
+            // pEngineName
+            size_t pEngineName_len;
+            read(clientSocket, &pEngineName_len, sizeof(size_t));
+            char *pEngineName = (char*) malloc(pEngineName_len);
+            read(clientSocket, pEngineName, pEngineName_len);
+
+            // engineVersion
+            uint32_t engineVersion;
+            read(clientSocket, &engineVersion, sizeof(uint32_t));
+            
+            // apiVersion
+            uint32_t apiVersion;
+            read(clientSocket, &apiVersion, sizeof(uint32_t));
+            // end vkApplicationCreateInfo
+            
+            // enabledLayerCount
+            uint32_t enabledLayerCount;
+            read(clientSocket, &enabledLayerCount, sizeof(uint32_t));
+
+            // ppEnabledLayerNames
+            size_t enabled_layer_names_len = 0;
+            read(clientSocket, &enabled_layer_names_len, sizeof(size_t));
+            
+            char **ppEnabledLayerNames = (char**) malloc(enabled_layer_names_len);
+            read(clientSocket, ppEnabledLayerNames, enabled_layer_names_len);
+
+            uint32_t enabledExtensionCount;
+            read(clientSocket, &enabledExtensionCount, sizeof(size_t));
+
+            // ppEnabledExtensionNames
+            size_t enabled_extension_names_len = 0;
+            read(clientSocket, &enabled_extension_names_len, sizeof(size_t));
+            
+            char **ppEnabledExtensionNames = (char**) malloc(enabled_extension_names_len);
+            read(clientSocket, ppEnabledExtensionNames, enabled_extension_names_len);
+
+            // finally, lets call iit
+            VkInstance instance;
+            VkInstanceCreateInfo instance_info;
+
+            VkApplicationInfo app_info;
+
+            app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            app_info.pNext = nullptr;
+            app_info.pApplicationName = pApplicationName;
+            app_info.applicationVersion = applicationVersion;
+            app_info.pEngineName = pEngineName;
+            app_info.engineVersion = engineVersion;
+            app_info.apiVersion = apiVersion;
+
+            instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            instance_info.pNext = nullptr;
+            instance_info.flags = flags;
+            instance_info.pApplicationInfo = &app_info;
+            instance_info.enabledLayerCount = enabledLayerCount;
+            instance_info.ppEnabledLayerNames = ppEnabledLayerNames;
+            instance_info.enabledExtensionCount = enabledExtensionCount;
+            instance_info.ppEnabledExtensionNames = ppEnabledExtensionNames;
+
+            VkResult result = vkCreateInstance(&instance_info, nullptr, &instance);
+
+            send(clientSocket, &instance, sizeof(VkInstance), 0);
+            send(clientSocket, &result, sizeof(VkResult), 0);
+
+            __android_log_print(android_LogPriority::ANDROID_LOG_DEBUG, "lavapt-server", 
+                    result == VK_SUCCESS? "VK_SUCCESS" : "no");
         }
     }
 }
