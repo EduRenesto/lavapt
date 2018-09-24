@@ -222,6 +222,36 @@ void listen_commands()
 
             vkDestroyInstance(instance, nullptr);
         }
+        else if(strcmp(funcName, "vkEnumeratePhysicalDevices") == 0)
+        {
+            VkInstance instance;
+            read(clientSocket, &instance, sizeof(VkInstance));
+
+            const unsigned char query_count = 1;
+            const unsigned char query_names = 2;
+
+            unsigned char flags = 0;
+
+            read(clientSocket, &flags, sizeof(unsigned char));
+
+            if((flags & query_count) != 0)
+            {
+                uint32_t count = 0;
+                vkEnumeratePhysicalDevices(instance, &count, nullptr);
+
+                send(clientSocket, &count, sizeof(uint32_t), 0);
+            } else if((flags & query_names) != 0)
+            {
+                uint32_t count = 0;
+                read(clientSocket, &count, sizeof(uint32_t));
+
+                VkPhysicalDevice *devices = (VkPhysicalDevice*) malloc(sizeof(VkPhysicalDevice) * count);
+
+                vkEnumeratePhysicalDevices(instance, &count, devices);
+
+                send(clientSocket, devices, sizeof(VkPhysicalDevice) * count, 0);
+            }
+        }
     }
 }
 

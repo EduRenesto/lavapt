@@ -191,6 +191,42 @@ void lavapt_vkDestroyInstance(
     send(m_Socket, &instance, sizeof(VkInstance), 0);
 }
 
+void lavapt_vkEnumeratePhysicalDevices(
+        VkInstance instance,
+        uint32_t *pPhysicalDeviceCount,
+        VkPhysicalDevice *pPhysicalDevices)
+{
+    size_t func_len = strlen("vkEnumeratePhysicalDevices") + 1;
+    send(m_Socket, &func_len, sizeof(size_t), 0);
+    send(m_Socket, "vkEnumeratePhysicalDevices", func_len,  0);
+
+    send(m_Socket, &instance, sizeof(VkInstance), 0);
+
+    const unsigned char query_count = 1;
+    const unsigned char query_names = 2;
+
+    unsigned char flags = 0;
+
+    if(*pPhysicalDeviceCount == 0 || pPhysicalDevices == nullptr)
+    {
+        flags |= query_count;
+    } else
+    {
+        flags |= query_names;
+    }
+
+    send(m_Socket, &flags, sizeof(unsigned char), 0);
+
+    if((flags & query_count) != 0)
+    {
+        read(m_Socket, pPhysicalDeviceCount, sizeof(uint32_t));
+    } else if((flags & query_names) != 0)
+    {
+        send(m_Socket, pPhysicalDeviceCount, sizeof(uint32_t), 0);
+        read(m_Socket, pPhysicalDevices, sizeof(VkPhysicalDevice) * (*pPhysicalDeviceCount));
+    }
+}
+
 VkResult lavapt_unimplemented() 
 {
     return VK_ERROR_FEATURE_NOT_PRESENT;
@@ -218,6 +254,9 @@ extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
     } else if(strcmp(pName, "vkDestroyInstance") == 0)
     {
         return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkDestroyInstance);
+    } else if(strcmp(pName, "vkEnumeratePhysicalDevices") == 0)
+    {
+        return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkEnumeratePhysicalDevices);
     }
     else 
     {
