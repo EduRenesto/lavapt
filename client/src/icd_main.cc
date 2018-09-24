@@ -95,7 +95,6 @@ VkResult lavapt_vkCreateInstance(
     send(m_Socket, &pInfo->enabledExtensionCount, sizeof(uint32_t), 0);
     // ppEnabledExtensionNames
     size_t enabled_extension_names_len = 0;
-    std::cout << "extensions " << pInfo->enabledExtensionCount << std::endl;
     for(auto i = 0; i < pInfo->enabledExtensionCount; i++) 
     {
         enabled_extension_names_len += strlen(pInfo->ppEnabledExtensionNames[i]) + 1;
@@ -181,6 +180,17 @@ VkResult lavapt_vkEnumerateInstanceVersion(
     return VK_SUCCESS;
 }
 
+void lavapt_vkDestroyInstance(
+        VkInstance instance,
+        const VkAllocationCallbacks *pAllocator)
+{
+    size_t func_len = strlen("vkDestroyInstance") + 1;
+    send(m_Socket, &func_len, sizeof(size_t), 0);
+    send(m_Socket, "vkDestroyInstance", func_len, 0);
+
+    send(m_Socket, &instance, sizeof(VkInstance), 0);
+}
+
 VkResult lavapt_unimplemented() 
 {
     return VK_ERROR_FEATURE_NOT_PRESENT;
@@ -205,6 +215,9 @@ extern "C" VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
     } else if(strcmp(pName, "vkEnumerateInstanceVersion") == 0)
     {
         return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkEnumerateInstanceVersion);
+    } else if(strcmp(pName, "vkDestroyInstance") == 0)
+    {
+        return reinterpret_cast<PFN_vkVoidFunction>(&lavapt_vkDestroyInstance);
     }
     else 
     {

@@ -215,6 +215,13 @@ void listen_commands()
             __android_log_print(android_LogPriority::ANDROID_LOG_DEBUG, "lavapt-server", 
                     result == VK_SUCCESS? "VK_SUCCESS" : "no");
         }
+        else if(strcmp(funcName, "vkDestroyInstance") == 0) 
+        {
+            VkInstance instance;
+            read(clientSocket, &instance, sizeof(VkInstance));
+
+            vkDestroyInstance(instance, nullptr);
+        }
     }
 }
 
